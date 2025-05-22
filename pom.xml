@@ -35,7 +35,23 @@
         <wiremock.version>3.13.0</wiremock.version>
         <wiremock-testcontainers.version>1.0-alpha-15</wiremock-testcontainers.version>
     </properties>
-
+    <repositories>
+        <repository>
+            <id>central</id>
+            <name>Central Repository</name>
+            <url>https://repo.maven.apache.org/maven2</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>github</id>
+            <url>https://maven.pkg.github.com/felleslosninger/*</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
     <dependencies>
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
