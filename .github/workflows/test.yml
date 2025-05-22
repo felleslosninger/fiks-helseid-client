@@ -1,0 +1,26 @@
+name: CI Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'
+        required: true
+        default: 'warning'
+      profile:
+        description: 'Build profile'
+        required: false
+  push:
+    branches:
+      - '*'
+  pull_request:
+    types: [ ]  # Empty list ensures PRs are not triggered. Trigger nytt bygg.
+
+jobs:
+
+  build-install-and-deploy-libs:
+    uses: felleslosninger/github-workflows/.github/workflows/ci-maven-install-deploy-lib.yml@main
+    with:
+      java-version: 21
+      sbom-path: .
+    secrets: inherit

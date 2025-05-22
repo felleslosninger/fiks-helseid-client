@@ -4,11 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>no.ks.fiks.pom</groupId>
-        <artifactId>fiks-ekstern-kotlin-superpom</artifactId>
-        <version>1.2.9</version>
-    </parent>
+
 
     <groupId>no.ks.fiks</groupId>
     <artifactId>helseid-client</artifactId>
@@ -52,12 +48,17 @@
             </snapshots>
         </repository>
     </repositories>
+
     <distributionManagement>
         <repository>
             <id>github</id>
-            <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/felleslosninger/helseid-client</url>
+            <name>GitHub felleslosninger Apache Maven Packages</name>
+            <url>https://maven.pkg.github.com/felleslosninger/fiks-helseid-client</url>
         </repository>
+        <snapshotRepository>
+            <id>github</id>
+            <url>https://maven.pkg.github.com/felleslosninger/fiks-helseid-client</url>
+        </snapshotRepository>
     </distributionManagement>
     <dependencies>
         <dependency>
@@ -150,17 +151,6 @@
                         <goals>
                             <goal>test-compile</goal>
                         </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.sonatype.plugins</groupId>
-                <artifactId>nexus-staging-maven-plugin</artifactId>
-                <version>1.7.0</version>
-                <executions>
-                    <execution>
-                        <id>default-deploy</id>
-                        <phase>none</phase>
                     </execution>
                 </executions>
             </plugin>
