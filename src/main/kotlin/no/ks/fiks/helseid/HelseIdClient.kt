@@ -153,6 +153,8 @@ class HelseIdClient(
                     .jwtID(UUID.randomUUID().toString())
                     .notBeforeTime(now.toDate())
                     .expirationTime(now.plus(jwtRequestLifetime).toDate())
+                    .claim("helseid://claims/client/claims/orgnr_parent", "997506499")
+                    .claim("nhn:msh/client/claims/herid", "103480")
                     .build()
             ).apply {
                 log.debug { "Generated JWT id: ${this.jwtClaimsSet.jwtid}" }
