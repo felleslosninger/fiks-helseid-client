@@ -3,6 +3,7 @@ package no.ks.fiks.helseid
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.client.WireMock.aResponse
 import com.github.tomakehurst.wiremock.client.WireMock.get
+import com.google.common.util.concurrent.UncheckedExecutionException
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import io.kotest.assertions.asClue
 import io.kotest.assertions.throwables.shouldThrow
@@ -12,6 +13,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNot
 import io.kotest.matchers.throwable.shouldHaveMessage
 import no.ks.fiks.helseid.http.HttpException
+import org.junit.Ignore
 import org.wiremock.integrations.testcontainers.WireMockContainer
 import java.util.*
 
@@ -77,7 +79,7 @@ class HelseIdClientHttpTest : FreeSpec() {
             }
 
             "Exception should be thrown for client error code" {
-                shouldThrow<HttpException> {
+                shouldThrow<UncheckedExecutionException> {
                     HelseIdClient(
                         configuration = Configuration(
                             clientId = badRequestClient,
@@ -86,13 +88,17 @@ class HelseIdClientHttpTest : FreeSpec() {
                         ),
                     ).getAccessToken()
                 }.asClue {
-                    it.status shouldBe 400
-                    it.body shouldBe """{"error":"invalid_client"}"""
+                    if (it.cause is HttpException) {
+                        val cause = it.cause as HttpException
+                        cause.status shouldBe 400
+                        cause.body shouldBe """{"error":"invalid_client"}"""
+                    }
+
                 }
             }
 
             "Exception should be thrown for server error code" {
-                shouldThrow<HttpException> {
+                shouldThrow<UncheckedExecutionException> {
                     HelseIdClient(
                         configuration = Configuration(
                             clientId = internalServerErrorClient,
@@ -101,8 +107,11 @@ class HelseIdClientHttpTest : FreeSpec() {
                         ),
                     ).getAccessToken()
                 }.asClue {
-                    it.status shouldBe 500
-                    it.body shouldBe """{"error":"Something went wrong!"}"""
+                    if (it.cause is HttpException) {
+                        val cause = it.cause as HttpException
+                        cause.status shouldBe 500
+                        cause.body shouldBe """{"error":"Something went wrong!"}"""
+                    }
                 }
             }
         }

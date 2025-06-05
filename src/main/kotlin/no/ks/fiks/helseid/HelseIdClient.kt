@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.google.common.base.Suppliers
+import com.google.common.cache.CacheBuilder
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -66,21 +67,38 @@ class HelseIdClient(
         .findAndRegisterModules()
         .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
 
-    private val accessTokenCache = Suppliers.memoizeWithExpiration(
-        { getNewAccessToken() },
-        configuration.accessTokenLifetime.minus(configuration.accessTokenRenewalThreshold),
-    )
+    private val accessTokenCache = CacheBuilder.newBuilder()
+        .expireAfterWrite(
+            configuration.accessTokenLifetime.minus(configuration.accessTokenRenewalThreshold)
+        )
+        .build<CacheKey, TokenResponse>()
+
+
     private val dpopAccessTokenCache = Suppliers.memoizeWithExpiration(
         { getNewDpopAccessToken() },
         configuration.accessTokenLifetime.minus(configuration.accessTokenRenewalThreshold),
     )
 
-    fun getAccessToken(): TokenResponse = accessTokenCache.get()
+    fun getAccessToken(enhet: String? = null, underEnhet: String? = null): TokenResponse {
+        val key = CacheKey(enhet, underEnhet)
+        return accessTokenCache.get(key) {
+            getNewAccessToken(enhet, underEnhet)
+        }
+    }
 
-    private fun getNewAccessToken(): TokenResponse {
+
+    data class CacheKey(val enhet: String?, val underEnhet: String?) {
+        init {
+            require(!(enhet == null && underEnhet != null)) {
+                "underEnhet cannot be non-null when enhet is null"
+            }
+        }
+    }
+
+    private fun getNewAccessToken(enhet:String? = null ,underEnhet:String? = null): TokenResponse {
         log.debug { "Renewing access token" }
         return httpClient
-            .execute(buildPostRequest()) {
+            .execute(buildPostRequest(enhet,underEnhet)) {
                 if (it.code >= 300) {
                     throw HttpException(it.code, it.readBodyAsString())
                 }
@@ -89,8 +107,8 @@ class HelseIdClient(
             }
     }
 
-    private fun buildPostRequest() = HttpPost(openIdConfiguration.getTokenEndpoint()).apply {
-        entity = buildUrlEncodedFormEntity(buildSignedJwt().serialize())
+    private fun buildPostRequest(enhet:String?,underEnhet:String?) = HttpPost(openIdConfiguration.getTokenEndpoint()).apply {
+        entity = buildUrlEncodedFormEntity(buildSignedJwt(enhet,underEnhet).serialize())
     }
 
     fun getDpopAccessToken(): TokenResponse = dpopAccessTokenCache.get()
@@ -138,8 +156,26 @@ class HelseIdClient(
             StandardCharsets.UTF_8,
         )
 
-    private fun buildSignedJwt() =
+    private fun buildSignedJwt(enhet:String?=null,underEnhet:String?=null) =
+
+
         Instant.now().let { now ->
+            val authorizationDetails = enhet?.let {
+                listOf(
+                    mapOf(
+                        "type" to "helseid_authorization",
+                        "practitioner_role" to mapOf(
+                            "organization" to mapOf(
+                                "identifier" to mapOf(
+                                    "system" to "urn:oid:1.0.6523",
+                                    "type" to "ENH",
+                                    "value" to (underEnhet?.let { "NO:ORGNR:$enhet:$it" }?:"NO:ORGNR:$enhet")
+                                )
+                            )
+                        )
+                    )
+                )
+            }
             SignedJWT(
                 JWSHeader.Builder(JWSAlgorithm.PS512)
                     .keyID(jwk.keyID)
@@ -153,12 +189,18 @@ class HelseIdClient(
                     .jwtID(UUID.randomUUID().toString())
                     .notBeforeTime(now.toDate())
                     .expirationTime(now.plus(jwtRequestLifetime).toDate())
-                    .claim("helseid://claims/client/claims/orgnr_parent", "997506499")
-                    .claim("nhn:msh/client/claims/herid", "103480")
+                    .apply {
+                        authorizationDetails?.let {
+                            claim("assertion_details", it)
+                        }
+
+                    }
                     .build()
             ).apply {
                 log.debug { "Generated JWT id: ${this.jwtClaimsSet.jwtid}" }
                 sign(signer)
+            }.also {
+                println("My serialized token request is" + it.serialize())
             }
         }
 

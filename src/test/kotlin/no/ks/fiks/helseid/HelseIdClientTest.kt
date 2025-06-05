@@ -26,6 +26,7 @@ import org.apache.hc.core5.http.ClassicHttpRequest
 import org.apache.hc.core5.http.io.HttpClientResponseHandler
 import org.apache.hc.core5.http.message.BasicNameValuePair
 import org.apache.hc.core5.net.WWWFormCodec
+import org.junit.Ignore
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.time.Duration
@@ -78,7 +79,7 @@ class HelseIdClientTest : FreeSpec({
 
                     RSASSAVerifier(readJwk().toRSAKey()).verify(jwt.header, jwt.signingInput, jwt.signature) shouldBe true
 
-                    jwt.jwtClaimsSet.claims shouldHaveSize 9
+                    jwt.jwtClaimsSet.claims shouldHaveSize 7
                     with(jwt.jwtClaimsSet) {
                         subject shouldBe clientId
                         issuer shouldBe clientId
@@ -200,7 +201,7 @@ class HelseIdClientTest : FreeSpec({
 
                     RSASSAVerifier(readJwk().toRSAKey()).verify(jwt.header, jwt.signingInput, jwt.signature) shouldBe true
 
-                    jwt.jwtClaimsSet.claims shouldHaveSize 9
+                    jwt.jwtClaimsSet.claims shouldHaveSize 7
                     with(jwt.jwtClaimsSet) {
                         subject shouldBe clientId
                         issuer shouldBe clientId
@@ -254,7 +255,7 @@ class HelseIdClientTest : FreeSpec({
 
                     RSASSAVerifier(readJwk().toRSAKey()).verify(jwt.header, jwt.signingInput, jwt.signature) shouldBe true
 
-                    jwt.jwtClaimsSet.claims shouldHaveSize 9
+                    jwt.jwtClaimsSet.claims shouldHaveSize 7
                     with(jwt.jwtClaimsSet) {
                         subject shouldBe clientId
                         issuer shouldBe clientId
