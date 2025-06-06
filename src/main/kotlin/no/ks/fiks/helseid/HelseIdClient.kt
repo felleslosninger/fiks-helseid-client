@@ -73,11 +73,12 @@ class HelseIdClient(
         )
         .build<CacheKey, TokenResponse>()
 
+    private val dpopAccessTokenCache = CacheBuilder.newBuilder()
+        .expireAfterWrite(
+            configuration.accessTokenLifetime.minus(configuration.accessTokenRenewalThreshold)
+        )
+        .build<CacheKey, TokenResponse>()
 
-    private val dpopAccessTokenCache = Suppliers.memoizeWithExpiration(
-        { getNewDpopAccessToken() },
-        configuration.accessTokenLifetime.minus(configuration.accessTokenRenewalThreshold),
-    )
 
     fun getAccessToken(enhet: String? = null, underEnhet: String? = null): TokenResponse {
         val key = CacheKey(enhet, underEnhet)
@@ -111,12 +112,18 @@ class HelseIdClient(
         entity = buildUrlEncodedFormEntity(buildSignedJwt(enhet,underEnhet).serialize())
     }
 
-    fun getDpopAccessToken(): TokenResponse = dpopAccessTokenCache.get()
+    fun getDpopAccessToken(enhet: String? = null, underEnhet: String? = null): TokenResponse {
+        val key = CacheKey(enhet, underEnhet)
+        return dpopAccessTokenCache.get(key) {
+            getNewDpopAccessToken(enhet, underEnhet)
+        }
 
-    private fun getNewDpopAccessToken(): TokenResponse {
+    }
+
+    private fun getNewDpopAccessToken(enhet: String?,underEnhet: String?): TokenResponse {
         log.debug { "Renewing DPoP access token" }
         val nonce = httpClient
-            .execute(buildDpopPostRequest()) {
+            .execute(buildDpopPostRequest(enhet = enhet, underEnhet = underEnhet)) {
                 if (it.code != 400) {
                     throw HttpException(it.code, it.readBodyAsString())
                 }
@@ -130,7 +137,7 @@ class HelseIdClient(
         if (nonce == null) throw RuntimeException("Expected ${Headers.DPOP_NONCE} header to be set")
 
         return httpClient
-            .execute(buildDpopPostRequest(nonce)) {
+            .execute(buildDpopPostRequest(nonce = nonce, enhet = enhet, underEnhet = underEnhet)) {
                 if (it.code >= 300) {
                     throw HttpException(it.code, it.readBodyAsString())
                 }
@@ -139,7 +146,7 @@ class HelseIdClient(
             }
     }
 
-    private fun buildDpopPostRequest(nonce: String? = null) = HttpPost(openIdConfiguration.getTokenEndpoint()).apply {
+    private fun buildDpopPostRequest(nonce: String? = null,enhet:String?,underEnhet:String?) = HttpPost(openIdConfiguration.getTokenEndpoint()).apply {
         val serializedJwtClaim = buildSignedJwt()
         entity = buildUrlEncodedFormEntity(serializedJwtClaim.serialize())
         addHeader(Headers.DPOP, dpopProofBuilder.buildProof(Endpoint(HttpMethod.POST, openIdConfiguration.getTokenEndpoint().toString()), nonce))
@@ -156,7 +163,7 @@ class HelseIdClient(
             StandardCharsets.UTF_8,
         )
 
-    private fun buildSignedJwt(enhet:String?=null,underEnhet:String?=null) =
+    private fun buildSignedJwt(enhet:String?="991825827",underEnhet:String?=null) =
 
 
         Instant.now().let { now ->

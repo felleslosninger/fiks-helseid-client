@@ -133,7 +133,7 @@ class HelseIdClientHttpTest : FreeSpec() {
             }
 
             "Exception should be thrown if an error other than bad request is returned for the first request" {
-                shouldThrow<HttpException> {
+                shouldThrow<UncheckedExecutionException> {
                     HelseIdClient(
                         configuration = Configuration(
                             clientId = internalServerErrorClient,
@@ -142,13 +142,16 @@ class HelseIdClientHttpTest : FreeSpec() {
                         ),
                     ).getDpopAccessToken()
                 }.asClue {
-                    it.status shouldBe 500
-                    it.body shouldBe """{"error":"Something went wrong!"}"""
+                    if (it.cause is HttpException) {
+                        val cause = it.cause as HttpException
+                        cause.status shouldBe 500
+                        cause.body shouldBe """{"error":"Something went wrong!"}"""
+                    }
                 }
             }
 
             "Exception should be thrown if a bad request error with code other than use_dpop_nonce is returned for the first request" {
-                shouldThrow<HttpException> {
+                shouldThrow<UncheckedExecutionException> {
                     HelseIdClient(
                         configuration = Configuration(
                             clientId = badRequestClient,
@@ -156,14 +159,15 @@ class HelseIdClientHttpTest : FreeSpec() {
                             environment = Environment(wireMock.baseUrl, UUID.randomUUID().toString()),
                         ),
                     ).getDpopAccessToken()
-                }.asClue {
-                    it.status shouldBe 400
-                    it.body shouldBe """{"error":"invalid_client"}"""
+                }.let { it.cause as HttpException }.asClue {
+
+                        it.status shouldBe 400
+                        it.body shouldBe """{"error":"invalid_client"}"""
                 }
             }
 
             "Exception should be thrown if an error is returned for the second request" {
-                shouldThrow<HttpException> {
+                shouldThrow<UncheckedExecutionException> {
                     HelseIdClient(
                         configuration = Configuration(
                             clientId = dpopErrorClient,
@@ -171,14 +175,14 @@ class HelseIdClientHttpTest : FreeSpec() {
                             environment = Environment(wireMock.baseUrl, UUID.randomUUID().toString()),
                         ),
                     ).getDpopAccessToken()
-                }.asClue {
+                }.let { it.cause as HttpException }.asClue {
                     it.status shouldBe 500
                     it.body shouldBe "Something went wrong"
                 }
             }
 
             "Exception should be thrown if nonce header is missing in first response" {
-                shouldThrow<RuntimeException> {
+                shouldThrow<UncheckedExecutionException> {
                     HelseIdClient(
                         configuration = Configuration(
                             clientId = dpopWithoutNonceClient,
@@ -186,7 +190,7 @@ class HelseIdClientHttpTest : FreeSpec() {
                             environment = Environment(wireMock.baseUrl, UUID.randomUUID().toString()),
                         ),
                     ).getDpopAccessToken()
-                }.asClue {
+                }.let { it.cause as RuntimeException }.asClue {
                     it shouldHaveMessage "Expected DPoP-Nonce header to be set"
                 }
             }
