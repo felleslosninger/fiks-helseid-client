@@ -147,7 +147,7 @@ class HelseIdClient(
     }
 
     private fun buildDpopPostRequest(nonce: String? = null,enhet:String?,underEnhet:String?) = HttpPost(openIdConfiguration.getTokenEndpoint()).apply {
-        val serializedJwtClaim = buildSignedJwt()
+        val serializedJwtClaim = buildSignedJwt(enhet,underEnhet)
         entity = buildUrlEncodedFormEntity(serializedJwtClaim.serialize())
         addHeader(Headers.DPOP, dpopProofBuilder.buildProof(Endpoint(HttpMethod.POST, openIdConfiguration.getTokenEndpoint().toString()), nonce))
     }
@@ -163,7 +163,7 @@ class HelseIdClient(
             StandardCharsets.UTF_8,
         )
 
-    private fun buildSignedJwt(enhet:String?="991825827",underEnhet:String?=null) =
+    private fun buildSignedJwt(enhet:String?=null,underEnhet:String?=null) =
 
 
         Instant.now().let { now ->
